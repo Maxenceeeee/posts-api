@@ -72,9 +72,7 @@ router.get('/posts', (ctx) => {
 
   const parsedPostId = Number(postId)
   if (!Number.isInteger(parsedPostId) || parsedPostId < 1) {
-    ctx.status = 400
-    ctx.body = { error: 'le postId doit être un entier supérieur ou égal à 1' }
-    return
+    ctx.throw(400, 'le postId doit être un entier supérieur ou égal à 1')
   }
 
   ctx.body = posts.filter((post) => post.postId === parsedPostId)
@@ -83,9 +81,7 @@ router.get('/posts', (ctx) => {
 router.get('/posts/:id', (ctx) => {
   const post = posts.find((p) => p.id === Number(ctx.params.id))
   if (!post) {
-    ctx.status = 404
-    ctx.body = { error: 'Post not found' }
-    return
+    ctx.throw(404, 'Post not found')
   }
 
   ctx.body = post
@@ -112,9 +108,7 @@ router.post('/posts', (ctx) => {
 router.put('/posts/:id', (ctx) => {
   const post = posts.find((item) => item.id === Number(ctx.params.id))
   if (!post) {
-    ctx.status = 404
-    ctx.body = { error: 'Post not found' }
-    return
+    ctx.throw(404, 'Post not found')
   }
 
   const input = ctx.request.body
@@ -128,9 +122,7 @@ router.put('/posts/:id', (ctx) => {
 router.patch('/posts/:id', (ctx) => {
   const post = posts.find((item) => item.id === Number(ctx.params.id))
   if (!post) {
-    ctx.status = 404
-    ctx.body = { error: 'Post not found' }
-    return
+    ctx.throw(404, 'Post not found')
   }
 
   const input = ctx.request.body
@@ -144,13 +136,10 @@ router.patch('/posts/:id', (ctx) => {
 router.delete('/posts/:id', (ctx) => {
   const index = posts.findIndex((p) => p.id === Number(ctx.params.id))
   if (index === -1) {
-    ctx.status = 404
-    ctx.body = { error: 'Post not found' }
-    return
+    ctx.throw(404, 'Post not found')
   }
   posts.splice(index, 1)
   ctx.status = 204
-  ctx.body = { message: 'Post deleted successfully' }
 })
 
 app.use(async (ctx, next) => {
@@ -181,9 +170,7 @@ app.use(router.allowedMethods({ throw: true }))
 app.use(async (ctx, next) => {
   await next()
   if (ctx.status >= 400 && ctx.body == null) {
-    const status = ctx.status
-    ctx.body = { error: ctx.status === 404 ? 'Not Found' : 'Request failed' }
-    ctx.status = status
+    ctx.throw(ctx.status, ctx.status === 404 ? 'Not Found' : 'Request failed')
   }
 })
 
