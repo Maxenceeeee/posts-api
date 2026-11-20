@@ -1,7 +1,7 @@
 import Koa from 'koa'
 import Router from '@koa/router'
 import bodyParser from 'koa-bodyparser'
-import posts from '../posts.seed.json' with { type: 'json' }
+import { createPost, deletePost, findPostById, getPosts, updatePost } from './posts-store.js'
 
 const app = new Koa()
 const router = new Router()
@@ -66,7 +66,7 @@ router.get('/', (ctx) => {
 router.get('/posts', (ctx) => {
   const { postId } = ctx.query
   if (postId === undefined) {
-    ctx.body = posts
+    ctx.body = getPosts()
     return
   }
 
@@ -75,11 +75,11 @@ router.get('/posts', (ctx) => {
     ctx.throw(400, 'le postId doit être un entier supérieur ou égal à 1')
   }
 
-  ctx.body = posts.filter((post) => post.postId === parsedPostId)
+  ctx.body = getPosts(parsedPostId)
 })
 
 router.get('/posts/:id', (ctx) => {
-  const post = posts.find((p) => p.id === Number(ctx.params.id))
+  const post = findPostById(Number(ctx.params.id))
   if (!post) {
     ctx.throw(404, 'Post not found')
   }
@@ -92,21 +92,15 @@ router.post('/posts', (ctx) => {
   const validationError = validatePost(input)
   if (validationError) ctx.throw(400, validationError)
 
-  const newPost = {
-    id: posts.reduce((highestId, post) => Math.max(highestId, post.id), 0) + 1,
-    postId: input.postId,
-    name: input.name,
-    email: input.email,
-    body: input.body,
-  }
-  posts.push(newPost)
+  const newPost = createPost(input)
   ctx.status = 201
   ctx.set('Location', `/posts/${newPost.id}`)
   ctx.body = newPost
 })
 
 router.put('/posts/:id', (ctx) => {
-  const post = posts.find((item) => item.id === Number(ctx.params.id))
+  const id = Number(ctx.params.id)
+  const post = findPostById(id)
   if (!post) {
     ctx.throw(404, 'Post not found')
   }
@@ -115,12 +109,12 @@ router.put('/posts/:id', (ctx) => {
   const validationError = validatePost(input)
   if (validationError) ctx.throw(400, validationError)
 
-  Object.assign(post, input)
-  ctx.body = post
+  ctx.body = updatePost(id, input)
 })
 
 router.patch('/posts/:id', (ctx) => {
-  const post = posts.find((item) => item.id === Number(ctx.params.id))
+  const id = Number(ctx.params.id)
+  const post = findPostById(id)
   if (!post) {
     ctx.throw(404, 'Post not found')
   }
@@ -129,16 +123,13 @@ router.patch('/posts/:id', (ctx) => {
   const validationError = validatePost(input, true)
   if (validationError) ctx.throw(400, validationError)
 
-  Object.assign(post, input)
-  ctx.body = post
+  ctx.body = updatePost(id, input)
 })
 
 router.delete('/posts/:id', (ctx) => {
-  const index = posts.findIndex((p) => p.id === Number(ctx.params.id))
-  if (index === -1) {
+  if (!deletePost(Number(ctx.params.id))) {
     ctx.throw(404, 'Post not found')
   }
-  posts.splice(index, 1)
   ctx.status = 204
 })
 
