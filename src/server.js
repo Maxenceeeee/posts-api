@@ -88,6 +88,18 @@ router.post('/posts', (ctx) => {
   ctx.body = newPost
 })
 
+router.delete('/posts/:id', (ctx) => {
+  const index = posts.findIndex((p) => p.id === Number(ctx.params.id))
+  if (index === -1) {
+    ctx.status = 404
+    ctx.body = { error: 'Post not found' }
+    return
+  }
+  posts.splice(index, 1)
+  ctx.status = 204
+  ctx.body = { message: 'Post deleted successfully' }
+})
+
 app.use(async (ctx, next) => {
   try {
     await next()
