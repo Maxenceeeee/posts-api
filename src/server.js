@@ -8,6 +8,57 @@ const router = new Router()
 const port = process.env.PORT ?? 3000
 const postFields = ['postId', 'name', 'email', 'body']
 
+function validatePost(input, partial = false) {
+  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+    return 'Le corps doit être un objet JSON'
+  }
+
+  const fields = Object.keys(input)
+  if (fields.some((field) => !postFields.includes(field))) {
+    return 'Le corps contient un champ inconnu'
+  }
+
+  if (partial && fields.length === 0) {
+    return 'Au moins un champ doit être fourni'
+  }
+
+  if (!partial && postFields.some((field) => !Object.hasOwn(input, field))) {
+    return 'Les champs postId, name, email et body sont obligatoires'
+  }
+
+  for (const field of fields) {
+    if (field === 'postId' && (!Number.isInteger(input.postId) || input.postId < 1)) {
+      return 'postId doit être un entier supérieur ou égal à 1'
+    }
+
+    if (
+      field === 'name' &&
+      (typeof input.name !== 'string' || input.name.trim().length === 0 || input.name.length > 100)
+    ) {
+      return 'name doit contenir entre 1 et 100 caractères'
+    }
+
+    if (
+      field === 'email' &&
+      (typeof input.email !== 'string' ||
+        input.email.length > 100 ||
+        input.email.trim() !== input.email ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email))
+    ) {
+      return 'email doit être une adresse e-mail valide de 100 caractères au plus'
+    }
+
+    if (
+      field === 'body' &&
+      (typeof input.body !== 'string' || input.body.trim().length === 0 || input.body.length > 500)
+    ) {
+      return 'body doit contenir entre 1 et 500 caractères'
+    }
+  }
+
+  return null
+}
+
 router.get('/', (ctx) => {
   ctx.body = { message: 'Posts API est lancée' }
 })
@@ -42,38 +93,8 @@ router.get('/posts/:id', (ctx) => {
 
 router.post('/posts', (ctx) => {
   const input = ctx.request.body
-  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
-    ctx.throw(400, 'Le corps doit être un objet JSON')
-  }
-
-  if (Object.keys(input).some((field) => !postFields.includes(field))) {
-    ctx.throw(400, 'Le corps contient un champ inconnu')
-  }
-
-  if (postFields.some((field) => !Object.hasOwn(input, field))) {
-    ctx.throw(400, 'Les champs postId, name, email et body sont obligatoires')
-  }
-
-  if (!Number.isInteger(input.postId) || input.postId < 1) {
-    ctx.throw(400, 'postId doit être un entier supérieur ou égal à 1')
-  }
-
-  if (typeof input.name !== 'string' || input.name.trim().length === 0 || input.name.length > 100) {
-    ctx.throw(400, 'name doit contenir entre 1 et 100 caractères')
-  }
-
-  if (
-    typeof input.email !== 'string' ||
-    input.email.length > 100 ||
-    input.email.trim() !== input.email ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)
-  ) {
-    ctx.throw(400, 'email doit être une adresse e-mail valide de 100 caractères au plus')
-  }
-
-  if (typeof input.body !== 'string' || input.body.trim().length === 0 || input.body.length > 500) {
-    ctx.throw(400, 'body doit contenir entre 1 et 500 caractères')
-  }
+  const validationError = validatePost(input)
+  if (validationError) ctx.throw(400, validationError)
 
   const newPost = {
     id: posts.reduce((highestId, post) => Math.max(highestId, post.id), 0) + 1,
@@ -86,6 +107,38 @@ router.post('/posts', (ctx) => {
   ctx.status = 201
   ctx.set('Location', `/posts/${newPost.id}`)
   ctx.body = newPost
+})
+
+router.put('/posts/:id', (ctx) => {
+  const post = posts.find((item) => item.id === Number(ctx.params.id))
+  if (!post) {
+    ctx.status = 404
+    ctx.body = { error: 'Post not found' }
+    return
+  }
+
+  const input = ctx.request.body
+  const validationError = validatePost(input)
+  if (validationError) ctx.throw(400, validationError)
+
+  Object.assign(post, input)
+  ctx.body = post
+})
+
+router.patch('/posts/:id', (ctx) => {
+  const post = posts.find((item) => item.id === Number(ctx.params.id))
+  if (!post) {
+    ctx.status = 404
+    ctx.body = { error: 'Post not found' }
+    return
+  }
+
+  const input = ctx.request.body
+  const validationError = validatePost(input, true)
+  if (validationError) ctx.throw(400, validationError)
+
+  Object.assign(post, input)
+  ctx.body = post
 })
 
 router.delete('/posts/:id', (ctx) => {
