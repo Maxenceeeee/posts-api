@@ -82,7 +82,6 @@ Les erreurs sont renvoyées en JSON sous la forme `{ "error": "<message>" }`.
 | ----- | ------------------------------------------------------------------------------------ |
 | `400` | JSON invalide, champ manquant, inconnu ou invalide, `postId` de la requête incorrect |
 | `404` | Post ou route inexistant                                                             |
-| `405` | Méthode non autorisée sur une route existante                                        |
 | `500` | Erreur interne du serveur (message générique, détail dans les logs)                  |
 
 ## Exemples
