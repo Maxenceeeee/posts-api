@@ -44,16 +44,34 @@ app.use(async (ctx, next) => {
     await next()
   } catch (error) {
     const status = error.status || error.statusCode || 500
-    console.log(`${ctx.method} ${ctx.url} ${status}`)
-    throw error
+    ctx.status = status
+    ctx.body = {
+      error: status >= 500 ? 'Internal Server Error' : error.message || ctx.message,
+    }
+
+    if (status >= 500) {
+      ctx.app.emit('error', error, ctx)
+    }
   }
 
   console.log(`${ctx.method} ${ctx.url} ${ctx.status}`)
 })
 
-app.use(bodyParser())
+app.use(bodyParser({
+  onerror: (_error, ctx) => {
+    ctx.throw(400, 'Invalid JSON body')
+  },
+}))
 app.use(router.routes())
-app.use(router.allowedMethods())
+app.use(router.allowedMethods({ throw: true }))
+app.use(async (ctx, next) => {
+  await next()
+  if (ctx.status >= 400 && ctx.body == null) {
+    const status = ctx.status
+    ctx.body = { error: ctx.status === 404 ? 'Not Found' : 'Request failed' }
+    ctx.status = status
+  }
+})
 
 app.listen(port, () => {
   console.log(`Serveur démarré sur http://localhost:${port}`)
